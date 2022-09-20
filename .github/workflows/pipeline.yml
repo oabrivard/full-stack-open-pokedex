@@ -5,6 +5,9 @@ on:
     branches:
       - master
 
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
 jobs:
   simple_deployment_pipeline:
     runs-on: ubuntu-20.04
@@ -25,4 +28,6 @@ jobs:
         uses: cypress-io/github-action@v4
         with:
           start: npm run start-prod
-          wait-on: http://localhost:5001      
+          wait-on: http://localhost:5001     
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only           
