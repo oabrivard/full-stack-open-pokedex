@@ -23,5 +23,5 @@ jobs:
           COMMIT_MESSAGES: ${{ toJson(github.event.commits.*.message) }}
         run: echo "$COMMIT_MESSAGES"
       - name: test stuff
-        if: ${{ github.event_name == 'push' && contains(join(github.event.commits.*.message),'test') }}
+        if: ${{ github.event_name == 'push' && contains(join(github.event.commits.*.message),'testing') }}
         run: echo "ok"        
