@@ -1,27 +1,53 @@
-name: Testing stuff
+name: Deployment pipeline
 
 on:
   push:
     branches:
       - master
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize]
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
 jobs:
-  a_test_job:
+  simple_deployment_pipeline:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - name: github context
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+      - name: npm install
+        run: npm install
+      - name: lint
+        run: npm run eslint
+      - name: build
+        run: npm run build
+      - name: test
+        run: npm test
+      - name: e2e tests
+        uses: cypress-io/github-action@v4
+        with:
+          start: npm run start-prod
+          wait-on: http://localhost:5001     
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: deploy
+        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message),'#skip') }}
+        run: flyctl deploy --remote-only         
+
+  tag_release:
+    needs: [simple_deployment_pipeline]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
+      - name: Bump version and push tag
+        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message),'#skip') }}
+        uses: anothrNick/github-tag-action@1.36.0
         env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
-      - name: commits
-        env:
-          COMMITS: ${{ toJson(github.event.commits) }}
-        run: echo "$COMMITS"
-      - name: commit messages
-        env:
-          COMMIT_MESSAGES: ${{ toJson(github.event.commits.*.message) }}
-        run: echo "$COMMIT_MESSAGES"
-      - name: test stuff
-        if: ${{ github.event_name == 'push' && contains(join(github.event.commits.*.message),'testing') }}
-        run: echo "ok"        
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: patch
+
